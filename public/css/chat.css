@@ -1,0 +1,15 @@
+.chat {
+  width: 90%;
+  height: 800px;
+  border: 10px solid rgb(241, 167, 167);
+  margin: 40px auto 0;
+  background: #f9f9f9;
+  border-radius: 3%;
+}
+
+.chat h1 {
+  text-align: center;
+  font: 600 40px "";
+  letter-spacing: 1px;
+  color: rgb(71, 71, 71);
+}
