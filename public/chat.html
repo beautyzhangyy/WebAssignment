@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <title>yyWeb</title>
-    <link rel="stylesheet" href="css/index.css" />
-    <link rel="stylesheet" href="css/chat.css" />
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
   </head>
   <body>
     <div class="top-box">
@@ -23,11 +23,87 @@
         <span>YY'S CHAT ROOM</span>
       </div>
       <div class="main-chat"></div>
+      <div class="user-list-title">
+        <span>USER LIST</span>
+      </div>
+      <div class="user-list"></div>
       <div class="type-box">
-        <input type="name" class="whochat" id="who" placeholder="Name"></input>
-        <textarea class="chat-content" id="chat-content"></textarea>
-        <input type="button" value="Send" class="chat_sub" id="chatsub" />
+        <input type="text" class="whochat" id="who" placeholder="Name" />
+        <input
+          type="text"
+          class="chat-content"
+          id="chat-content"
+          placeholder="Message"
+        />
+        <button id="chatsub" class="chat_sub">Send</button>
+        <input type="button" value="Leave" class="chat_leave" id="chatleave" />
       </div>
     </div>
+    <script>
+      const socket = io();
+      const sendInfo = document.getElementById("chatsub");
+      sendInfo.addEventListener("click", function () {
+        const inputName = document.getElementById("who");
+        const inputMessage = document.getElementById("chat-content");
+        const content = `${inputName.value}: ${inputMessage.value}`;
+        socket.emit("chat content", content);
+        inputMessage.value = "";
+      });
+
+      const statusCreate = document.querySelector(".main-chat");
+      socket.on("chat status", (info) => {
+        const addStatus = document.createElement("div");
+        addStatus.classList.add("status");
+        addStatus.innerText = info;
+        statusCreate.appendChild(addStatus);
+      });
+
+      const chatCreate = document.querySelector(".main-chat");
+      socket.on("chat content", (content) => {
+        const addContent = document.createElement("div");
+        addContent.classList.add("message");
+        addContent.innerText = content;
+        chatCreate.appendChild(addContent);
+      });
+
+      // Get the Leave Room button
+      const leaveRoom = document.getElementById("chatleave");
+      // Get the name input field and the information input field
+      const inputName = document.getElementById("who");
+      const inputMessage = document.getElementById("chat-content");
+      const sendBtn = document.getElementById("chatsub");
+
+      // The function to execute when the Leave Room button is clicked
+      leaveRoom.addEventListener("click", () => {
+        // Hide the name input field and information input field
+        socket.emit("user leave");
+        window.location.replace("/index.html");
+      });
+
+      window.addEventListener("afterLeave", function (event) {
+        socket.emit("chat status", "----- You left the chat room -----");
+        // Broadcast a message to all other connected clients
+        socket.broadcast.emit(
+          "chat status",
+          "----- A user has left the chat room -----"
+        );
+      });
+
+      // const userListButton = document.querySelector("user-list");
+
+      // // Send a request for a list of users
+      // userListButton.addEventListener("click", () => {
+      //   socket.emit("get user list");
+      // });
+
+      // // Process the obtained user list information
+      // socket.on("user list", (userList) => {
+      //   let message = `Online users number: ${userList.length}\n`;
+      //   for (let user of userList) {
+      //     message += `User ID: ${user.id}\n`;
+      //   }
+      //   socket.emit("send user list", message);
+      // });
+    </script>
   </body>
 </html>
