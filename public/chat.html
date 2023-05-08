@@ -7,49 +7,87 @@
     <script src="http://localhost:3000/socket.io/socket.io.js"></script>
   </head>
   <body>
+    <!-- navigation bar -->
     <div class="top-box">
       <div class="head-portrait">
         <img src="image/head_portrait.png" alt="" />
         <span>YongYi Home</span>
       </div>
+
+      <!-- The main content of the navigation bar -->
       <ul>
         <li><a class="nav-item" href="./index.html">Introduction</a></li>
         <li><a class="nav-item" href="./about.html">About</a></li>
         <li><a class="nav-item" href="./chat.html">Chat</a></li>
       </ul>
     </div>
+
+    <!-- chat body -->
     <div class="chat">
       <div class="title-box">
         <span>YY'S CHAT ROOM</span>
       </div>
+      <!-- The location where the message pops up -->
       <div class="main-chat"></div>
+      <!-- user list -->
       <div class="user-list-title">
         <span>USER LIST</span>
       </div>
       <div class="user-list"></div>
+      <!-- typing box -->
       <div class="type-box">
         <input type="text" class="whochat" id="who" placeholder="Name" />
+        <!-- Monitor content changes in real time -->
         <input
           type="text"
           class="chat-content"
           id="chat-content"
           placeholder="Message"
+          onchange="OnChange (event)"
+          oninput="OnInput (event)"
         />
         <button id="chatsub" class="chat_sub">Send</button>
-        <input type="button" value="Leave" class="chat_leave" id="chatleave" />
+        <button id="chatleave" class="chat_leave">Leave</button>
       </div>
     </div>
     <script>
       const socket = io();
+
+      // Get the input name and input message
+      const inputName = document.getElementById("who");
+      const inputMessage = document.getElementById("chat-content");
+
+      // Click send button to send the file
       const sendInfo = document.getElementById("chatsub");
+      // Execute when the send button is clicked
       sendInfo.addEventListener("click", function () {
-        const inputName = document.getElementById("who");
-        const inputMessage = document.getElementById("chat-content");
-        const content = `${inputName.value}: ${inputMessage.value}`;
-        socket.emit("chat content", content);
-        inputMessage.value = "";
+        // If there is no input in the name or information bar, a warning window will pop up
+        if (inputName.value == "" && inputMessage.value == "") {
+          alert("Please enter your name and message!");
+          return;
+        } else if (inputName.value == "") {
+          alert("Please enter your name!");
+          return;
+        } else if (inputMessage.value == "") {
+          alert("Please enter your message!");
+          return;
+        } else {
+          const inputName = document.getElementById("who");
+          const inputMessage = document.getElementById("chat-content");
+          const content = `${inputName.value}: ${inputMessage.value}`;
+          socket.emit("chat content", content);
+          // update user list
+          if (who.disabled == false) {
+            socket.emit("add user list", inputName.value);
+            socket.emit("user list");
+          }
+          inputMessage.value = "";
+          // The first time you click Send, you lock the name
+          who.disabled = true;
+        }
       });
 
+      // A message pops up when the chat status changes (user leaving, joining, and typing)
       const statusCreate = document.querySelector(".main-chat");
       socket.on("chat status", (info) => {
         const addStatus = document.createElement("div");
@@ -58,52 +96,78 @@
         statusCreate.appendChild(addStatus);
       });
 
+      // A pop-up message is displayed after a user sends a message (the user's page is different from others').
+      const userName = document.getElementById("who");
       const chatCreate = document.querySelector(".main-chat");
       socket.on("chat content", (content) => {
         const addContent = document.createElement("div");
-        addContent.classList.add("message");
-        addContent.innerText = content;
+        const cutName = content.indexOf(":");
+        const name = content.slice(0, cutName);
+        const message = content.slice(cutName + 1);
+        // Checks whether the message is sent by oneself
+        if (name == userName.value) {
+          addContent.classList.add("message-right");
+          addContent.innerText = message;
+        } else {
+          addContent.classList.add("message-left");
+          addContent.innerText = content;
+        }
         chatCreate.appendChild(addContent);
       });
 
-      // Get the Leave Room button
+      // Realize the user clicked the botton to leave the room function
       const leaveRoom = document.getElementById("chatleave");
-      // Get the name input field and the information input field
-      const inputName = document.getElementById("who");
-      const inputMessage = document.getElementById("chat-content");
-      const sendBtn = document.getElementById("chatsub");
-
-      // The function to execute when the Leave Room button is clicked
-      leaveRoom.addEventListener("click", () => {
-        // Hide the name input field and information input field
+      // Execute when the leave button is clicked
+      leaveRoom.addEventListener("click", function () {
         socket.emit("user leave");
+        socket.emit("user list");
+        // back to index page
         window.location.replace("/index.html");
       });
 
+      // Realize the user close the page to leave the room function
       window.addEventListener("afterLeave", function (event) {
-        socket.emit("chat status", "----- You left the chat room -----");
-        // Broadcast a message to all other connected clients
+        // send the message to all users
         socket.broadcast.emit(
           "chat status",
           "----- A user has left the chat room -----"
         );
+        socket.emit("user list");
       });
 
-      // const userListButton = document.querySelector("user-list");
+      // To display the user list function
+      const createUserList = document.querySelector(".user-list");
+      socket.on("create user list", (userList) => {
+        // Reset after clearing
+        document.querySelector(".user-list").innerHTML = "";
+        let userMessage = ``;
+        for (let index = 0; index < userList.length; index++) {
+          if (userList[index].name != undefined) {
+            userMessage += `user ${index + 1}: ${userList[index].name}\n`;
+          }
+        }
+        const userNum = userList.length;
+        let userInfo = document.createElement("div");
+        userInfo.classList.add("userListInfo");
+        userInfo.innerText = userMessage;
+        createUserList.appendChild(userInfo);
+      });
 
-      // // Send a request for a list of users
-      // userListButton.addEventListener("click", () => {
-      //   socket.emit("get user list");
-      // });
+      // Detects whether the user is typing
+      let typeStatus = false;
+      function OnInput(event) {
+        if (typeStatus == false && event.target.value.length == 1) {
+          typeStatus = true;
+          const typingInfo = `${inputName.value} is typing...`;
+          socket.emit("chat status", typingInfo);
+        }
+      }
 
-      // // Process the obtained user list information
-      // socket.on("user list", (userList) => {
-      //   let message = `Online users number: ${userList.length}\n`;
-      //   for (let user of userList) {
-      //     message += `User ID: ${user.id}\n`;
-      //   }
-      //   socket.emit("send user list", message);
-      // });
+      function OnChange(event) {
+        if (typeStatus == true) {
+          typeStatus = false;
+        }
+      }
     </script>
   </body>
 </html>
