@@ -33,6 +33,21 @@ io.on("connection", (socket) => {
     io.emit("chat content", content); // Broadcast the message to all connected clients
   });
 
+  // The user list is generated after the chat interface is enabled
+  const userList = Array.from(chattingUsers.values());
+  socket.emit("create user list", userList);
+
+  // Generate user list
+  socket.on("user list", () => {
+    const userList = Array.from(chattingUsers.values());
+    io.emit("create user list", userList);
+  });
+
+  // Add information about a new user
+  socket.on("add user list", (newName) => {
+    chattingUsers.set(socket.id, { name: newName });
+  });
+
   // Listen for the user to click away to leave the chat
   socket.on("user leave", (reason) => {
     console.log("user leave", reason);
@@ -55,20 +70,5 @@ io.on("connection", (socket) => {
       "chat status",
       "----- A user has left the chat room -----"
     );
-  });
-
-  // The user list is generated after the chat interface is enabled
-  const userList = Array.from(chattingUsers.values());
-  socket.emit("create user list", userList);
-
-  // Generate user list
-  socket.on("user list", () => {
-    const userList = Array.from(chattingUsers.values());
-    io.emit("create user list", userList);
-  });
-
-  // Add information about a new user
-  socket.on("add user list", (newName) => {
-    chattingUsers.set(socket.id, { name: newName });
   });
 });
